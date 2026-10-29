@@ -15,6 +15,7 @@ import PeScraper from './scrapers/peScrapar';
 import CircuitBreakerScrapper from './scrapers/circuitBreakerScrapper';
 
 import { CompanyService } from './services/company.service';
+import { CompanyScrapeErrorService } from './services/companyScrapeError.service';
 import { PeService } from './services/pe.service';
 import { CircuitBreakerService } from './services/circuitBreaker.service';
 // import { GetService } from './services/delete.service';
@@ -27,6 +28,10 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Price_earnings, Price_earningsSchema } from './entities/pe.entities';
 import { Companies, CompaniesSchema } from './entities/company.entities';
 import {
+  CompanyScrapeError,
+  CompanyScrapeErrorSchema,
+} from './entities/companyScrapeError.entities';
+import {
   Circuit_breaks,
   Circuit_breaksSchema,
 } from './entities/circuitBreaker.entities';
@@ -38,11 +43,13 @@ import {
       { name: Price_earnings.name, schema: Price_earningsSchema },
       { name: Companies.name, schema: CompaniesSchema },
       { name: Circuit_breaks.name, schema: Circuit_breaksSchema },
+      { name: CompanyScrapeError.name, schema: CompanyScrapeErrorSchema },
     ]),
   ],
   controllers: [],
   providers: [
     CompanyService,
+    CompanyScrapeErrorService,
     PeService,
     CircuitBreakerService,
     PageController,
