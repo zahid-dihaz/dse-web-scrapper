@@ -16,6 +16,23 @@ export class CompanyService {
     private companiesModel: Model<CompaniesDocument>,
   ) {}
 
+  private todayRecordDate(): string {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Dhaka',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  }
+
+  // Codes already stored for today's (Dhaka) recordDate, so a rerun can resume.
+  async codesStoredToday(): Promise<Set<string>> {
+    const codes = await this.companiesModel.distinct('code', {
+      recordDate: this.todayRecordDate(),
+    });
+    return new Set(codes);
+  }
+
   async upsertCompanyEntity(createCompanyDto: CreateCompanyDto): Promise<void> {
     const trimmedCompanyDto = trimDeep(createCompanyDto);
     const {
@@ -179,12 +196,7 @@ export class CompanyService {
       //   ordered: false,
       // });
 
-      const recordDate = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Asia/Dhaka',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(new Date());
+      const recordDate = this.todayRecordDate();
 
       const response = await this.companiesModel.updateOne(
         {

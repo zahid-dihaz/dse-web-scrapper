@@ -85,10 +85,10 @@ export default class PageService {
             (text) => text.textContent,
           );
 
-          dataObj['last_agm'] = await newPage.$eval(
-            'div.col-sm-6.pull-left > i',
-            (text) => text.textContent,
-          );
+          // Not every company page has an AGM line; don't fail the scrape for it.
+          dataObj['last_agm'] = await newPage
+            .$eval('div.col-sm-6.pull-left > i', (text) => text.textContent)
+            .catch(() => null);
 
           // console.log("last_agm'"); //!..............................................
           try {
@@ -753,6 +753,9 @@ export default class PageService {
       // const com = ['ACMEPL', 'AGRANINS', 'SJIBLPBOND', 'AAMRANET']; //TB10Y0126 TB10Y0126
 
       let stored = 0;
+      const skipped: string[] = [];
+      const alreadyStored = await this.companyService.codesStoredToday();
+      let resumed = 0;
       for (link in companies) {
         // for (link in com) {
         let currentPageData = new CreateCompanyDto();
@@ -762,7 +765,33 @@ export default class PageService {
         if (is_true) {
           continue;
         }
-        currentPageData = await pagePromise(companies[link].Code);
+        if (alreadyStored.has(companies[link].Code)) {
+          resumed++;
+          continue;
+        }
+        // One bad page (timeout, missing selector, odd layout) must not abort
+        // the remaining companies: retry once, then log and skip it.
+        const code = companies[link].Code;
+        let scraped = false;
+        for (let attempt = 1; attempt <= 2 && !scraped; attempt++) {
+          try {
+            currentPageData = await pagePromise(code);
+            scraped = true;
+          } catch (err) {
+            console.log(
+              `Company ${code} failed (attempt ${attempt}/2) => ${
+                (err as Error)?.message ?? err
+              }`,
+            );
+            if (attempt < 2) {
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+            }
+          }
+        }
+        if (!scraped) {
+          skipped.push(code);
+          continue;
+        }
         // currentPageData = await pagePromise(com[link]);
         //! ============================================= Database Insertion====================
         const result = await this.companyService.upsertCompanyEntity(
@@ -776,6 +805,14 @@ export default class PageService {
 
         // =============================================
         // scrapedData.push(currentPageData);
+      }
+      if (resumed > 0) {
+        console.log(`Skipped ${resumed} companies already stored today`);
+      }
+      if (skipped.length > 0) {
+        console.log(
+          `Skipped ${skipped.length} companies: ${skipped.join(', ')}`,
+        );
       }
       console.log('Scraping company info done...!!!');
       return { rows: stored };
